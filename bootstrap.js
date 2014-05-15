@@ -2,8 +2,11 @@ const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 const wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
 const os = Cc['@mozilla.org/observer-service;1'].getService(Ci.nsIObserverService);
 const fm = Cc['@mozilla.org/focus-manager;1'].getService(Ci.nsIFocusManager);
+const sss = Cc['@mozilla.org/content/style-sheet-service;1'].getService(Ci.nsIStyleSheetService);
+const ios = Cc['@mozilla.org/network/io-service;1'].getService(Ci.nsIIOService);
 const prefs = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefBranch);
 var LMObserver;
+var appliedURI;
 
 function myObserver() {
 	this.register();
@@ -52,10 +55,18 @@ myObserver.prototype = {
 			iframe.setAttribute('type', 'chrome');
 			iframe.setAttribute('style', 'border:0; -moz-box-flex:1;');
 			domDoc.body.insertBefore(iframe, domDoc.querySelector('#topSection').nextSibling);
+			var newToggleButton = domDoc.createElement('input');
+			newToggleButton.setAttribute('id', 'newtab-toggle');
+			newToggleButton.setAttribute('type', 'button');
+			newToggleButton.setAttribute('style', '-moz-user-focus: normal; position: absolute; right: 12px; top: 12px; cursor: pointer; color: -moz-dialogtext; font: message-box; font-size: 75%; width: 16px; height: 16px; background: -216px 0 transparent url(chrome://browser/skin/newtab/controls.png); border: none; padding: 0;');
+			domDoc.body.appendChild(newToggleButton);
+			newToggleButton.addEventListener('click', function(e){e.target.ownerDocument.querySelector('iframe').contentDocument.querySelector('#newtab-toggle').click()}, false);
+
 			iframe.contentWindow.location = 'about:newtab';
 			iframe.addEventListener('load', function () {
 				iframe.removeEventListener('load', arguments.callee, false);
 				var scrollbox = iframe.contentDocument.querySelector('#newtab-scrollbox')
+				iframe.contentDocument.querySelector('#newtab-toggle').style.display = 'none';
 				scrollbox.style.backgroundImage = 'none';
 				scrollbox.style.backgroundColor = 'transparent';
 				scrollbox.style.backgroundColor = 'transparent';
@@ -72,11 +83,15 @@ myObserver.prototype = {
 				var toggleDisplays = function (tdDoc) {
 					iframe = tdDoc.querySelector('iframe');
 					var spacers = tdDoc.querySelectorAll('.spacer');
+					var newToggleButton = tdDoc.querySelector('#newtab-toggle');
 					var logo = tdDoc.querySelector('#brandLogo');
 					var searchContainer = tdDoc.querySelector('#searchContainer');
 					var snippetContainer = tdDoc.querySelector('#snippetContainer');
+					var aboutMozilla = tdDoc.querySelector('#aboutMozilla');
 					var newtabMarginTop = iframe.contentDocument.querySelector('#newtab-margin-top');
 					if (!iframe.contentWindow.gAllPages.enabled) {
+						//tdDoc.body.removeAttribute('page-disabled');
+						tdDoc.body.setAttribute('page-disabled', 'true');
 						spacers[0].style.display = '';
 						spacers[1].style.display = '';
 						logo.style.display = '';
@@ -86,6 +101,8 @@ myObserver.prototype = {
 						iframe.style.mozBoxFlex = 0;
 						iframe.style.height = '50px';
 					} else {
+						tdDoc.body.removeAttribute('page-disabled');
+						//tdDoc.body.setAttribute('page-disabled', 'true');
 						spacers[0].style.display = 'none';
 						spacers[1].style.display = 'none';
 						logo.style.display = 'none';
@@ -94,6 +111,8 @@ myObserver.prototype = {
 						newtabMarginTop.style.display = 'none';
 						iframe.style.mozBoxFlex = 1;
 						iframe.style.height = 'auto';
+						aboutMozilla.style.right = 'auto';
+						aboutMozilla.style.left = '12px';
 					}
 				}
 				toggleDisplays(domDoc);
@@ -144,6 +163,8 @@ function startup(aData, aReason) {
 	}
 
 	LMObserver = new myObserver;
+	appliedURI = ios.newURI(aData.resourceURI.spec + 'global.css', null, null);
+	sss.loadAndRegisterSheet(appliedURI, sss.USER_SHEET);
 
 }
 
@@ -151,7 +172,7 @@ function shutdown(aData, aReason) {
 	if (aReason == APP_SHUTDOWN) return;
 
 	LMObserver.unregister();
-
+	sss.unregisterSheet(appliedURI, sss.USER_SHEET);
 	if (aReason == ADDON_UNINSTALL || aReason == ADDON_DISABLE) {
 		var url = prefs.clearUserPref('browser.newtab.url');
 	}

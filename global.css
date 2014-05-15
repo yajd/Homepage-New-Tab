@@ -1,0 +1,29 @@
+@-moz-document url(about:home) {
+input[type="button"] {
+    cursor: pointer;
+}
+#newtab-toggle {
+    -moz-user-focus: normal;
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    cursor: pointer;
+    -moz-user-focus: normal;
+    color: -moz-dialogtext;
+    font: message-box;
+    font-size: 75%;
+    width: 16px;
+    height: 16px;
+    background: -216px 0 transparent url(chrome://browser/skin/newtab/controls.png);
+    border: none;
+    padding: 0;
+}
+body[page-disabled] #newtab-toggle {
+    background-position: -232px 0 !important;
+}
+
+body #aboutMozilla:before {
+	right: auto !important;
+	left: 12px;
+}
+}
