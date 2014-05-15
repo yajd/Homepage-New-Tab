@@ -86,8 +86,6 @@ myObserver.prototype = {
 					var newToggleButton = tdDoc.querySelector('#newtab-toggle');
 					var logo = tdDoc.querySelector('#brandLogo');
 					var searchContainer = tdDoc.querySelector('#searchContainer');
-					var searchText = tdDoc.querySelector('#searchText');
-					var searchSubmit = tdDoc.querySelector('#searchSubmit');
 					var snippetContainer = tdDoc.querySelector('#snippetContainer');
 					var aboutMozilla = tdDoc.querySelector('#aboutMozilla');
 					var newtabMarginTop = iframe.contentDocument.querySelector('#newtab-margin-top');
@@ -97,20 +95,26 @@ myObserver.prototype = {
 						spacers[0].style.display = '';
 						spacers[1].style.display = '';
 						logo.style.display = '';
-						searchContainer.style.margin = '';
 						snippetContainer.style.display = '';
 						newtabMarginTop.setAttribute('style','');						
 						iframe.style.mozBoxFlex = 0;
 						iframe.style.height = '50px';
-						searchText.style.display = '';
-						searchSubmit.style.display = '';
+						searchContainer.style.margin = '';
+						if (prefs.getBoolPref('extensions.homepagenewtab.hide_search_field')) {
+							var searchContainerChildren = searchContainer.childNodes;
+							for (var m=0; m<searchContainerChildren.length; m++) {
+								if (searchContainerChildren[m].style) {
+									searchContainerChildren[m].style.display = '';
+								}
+							}
+						}
 					} else {
 						tdDoc.body.removeAttribute('page-disabled');
 						//tdDoc.body.setAttribute('page-disabled', 'true');
 						spacers[0].style.display = 'none';
 						spacers[1].style.display = 'none';
 						logo.style.display = 'none';
-						searchContainer.style.margin = '22px 0px 31px';
+						searchContainer.style.margin = '66px 0px 31px';
 						snippetContainer.style.display = 'none';
 						newtabMarginTop.setAttribute('style','position: absolute; width: 100%; display: flex; justify-content: center; align-items: center; height: 100%; max-height:none;');
 						iframe.style.mozBoxFlex = 1;
@@ -118,8 +122,12 @@ myObserver.prototype = {
 						aboutMozilla.style.right = 'auto';
 						aboutMozilla.style.left = '12px';
 						if (prefs.getBoolPref('extensions.homepagenewtab.hide_search_field')) {
-							searchText.style.display = 'none';
-							searchSubmit.style.display = 'none';
+							var searchContainerChildren = searchContainer.childNodes;
+							for (var m=0; m<searchContainerChildren.length; m++) {
+								if (searchContainerChildren[m].style) {
+									searchContainerChildren[m].style.display = 'none';
+								}
+							}
 						}
 					}
 				}
