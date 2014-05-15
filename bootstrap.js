@@ -67,32 +67,34 @@ function loadIntoWindow(domWindow, browserWin) {
 		Cu.reportError('NO BROWSRWIN');
 		return;
 	}
-	if (!browserWin.gBrowser) {
+	if (!domWindow.gBrowser) {
 		Cu.reportError('NO GBROWSER');
 		return;
 	}
 
 	//DO YOUR STUFF TO THE WINDOW HERE
-	browserWin.gBrowser.addEventListener('DOMContentLoaded', pageLoad, true);
+	domWindow.gBrowser.addEventListener('DOMContentLoaded', pageLoad, true);
 }
 
 function unloadFromWindow(domWindow, browserWin) {
 	if (!browserWin) {
 		return;
 	}
-	if (!browserWin.gBrowser) {
+	if (!domWindow.gBrowser) {
 		return;
 	}
 
 	//DO YOUR STUFF TO THE WINDOW HERE
-	browserWin.gBrowser.removeEventListener('DOMContentLoaded', pageLoad, true);
+	domWindow.gBrowser.removeEventListener('DOMContentLoaded', pageLoad, true);
 }
 
 var windowListener = {
 	onOpenWindow: function (aWindow) {
+Cu.reportError('WINDOW OPENED');
 		// Wait for the window to finish loading
 		let domWindow = aWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowInternal || Ci.nsIDOMWindow);
 		domWindow.addEventListener("load", function () {
+			Cu.reportError('opened window LOADED');
 			domWindow.removeEventListener("load", arguments.callee, false);
 			loadIntoWindow(domWindow, aWindow);
 		}, false);
@@ -112,9 +114,13 @@ function startup(aData, aReason) {
 	// Load into any existing windows
 	let windows = wm.getEnumerator("navigator:browser"); //THIS GETS ALL BROWSER TYPE WINDOWS (MEANING IT HAS GBROWSER)
 	while (windows.hasMoreElements()) {
-		let browserWin = windows.getNext();
-		let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
-		loadIntoWindow(domWindow, browserWin);
+		try {
+			let browserWin = windows.getNext();
+			let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
+			loadIntoWindow(domWindow, browserWin);
+		} catch (ex) {
+			Cu.reportError(ex);
+		}
 	}
 
 	// Load into any new windows
