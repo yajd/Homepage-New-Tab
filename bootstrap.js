@@ -1,152 +1,148 @@
 const {classes: Cc, interfaces: Ci, utils: Cu} = Components;
 const wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
+const os = Cc['@mozilla.org/observer-service;1'].getService(Ci.nsIObserverService);
+const fm = Cc['@mozilla.org/focus-manager;1'].getService(Ci.nsIFocusManager);
+const prefs = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefBranch);
+var LMObserver;
 
-function pageLoad(e) {
+function myObserver() {
+	this.register();
+}
 
-	//if (e.originalTarget instanceof Ci.HTMLDocument) {
-	var domWin = e.originalTarget.defaultView;
-	var domDoc = domWin.document;
-	//var win = domWin.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIWebNavigation).QueryInterface(Ci.nsIDocShellTreeItem).treeOwner.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIXULWindow);
-	//var doc = win.document;
+myObserver.prototype = {
+	observe: function (subject, topic, data) {
 
-	if (domWin.frameElement) {
-		//var parentDomWin = domWin.top;
-	} else {
-		if (/about\:home/i.test(domWin.location)) {
-			Cu.reportError('LOADED ABOUT:HOME');
-			var spacers = domDoc.querySelectorAll('.spacer');
-			var logo = domDoc.querySelector('#brandLogo');
-			var searchContainer = domDoc.querySelector('#searchContainer');
-			var browser = domDoc.createElement('iframe');
-			browser.setAttribute('type', 'chrome');
-			browser.setAttribute('style', 'border:0; -moz-box-flex:1;');
-			domDoc.body.insertBefore(browser, domDoc.querySelector('#topSection').nextSibling);
-			browser.contentWindow.location = 'about:newtab';
-			browser.addEventListener('load', function () {
-				browser.removeEventListener('load', arguments.callee, false);
-				browser.contentDocument.querySelector('#newtab-scrollbox').style.backgroundImage = 'none';
-				browser.contentDocument.querySelector('#newtab-scrollbox').style.backgroundColor = 'transparent';
-				browser.contentDocument.querySelector('#newtab-scrollbox').style.backgroundColor = 'transparent';
-				var iframe = browser;
+		if (!/^about\:home$/im.test(subject.baseURI)) {
+			return
+		}
+		subject.onreadystatechange = function () {
+			if (subject.readyState != 'interactive') {
+				return;
+			}
+			subject.onreadystatechange = null;
+			var domDoc = subject;
+			var prevent_focus = prefs.getBoolPref('extensions.homepagenewtab.prevent_focus');
+			if (prevent_focus) {
+				var searchText = domDoc.querySelector('#searchText');
+				searchText.removeAttribute('autofocus');
+				searchText.setAttribute('disabled', 'true');
+				subject.onreadystatechange = function () {
+					subject.onreadystatechange = null;
+					searchText.removeAttribute('disabled');
+				}
+			}
+
+			var gURLBar = wm.getMostRecentWindow("navigator:browser").gBrowser.getBrowserForDocument(subject).ownerDocument.defaultView.gURLBar;
+			var gURLBarUpped = function () {
+				Cu.reportError('HomepageNewTab - gURLBarUpped');
+				if (fm.focusedElement == subject.querySelector('html')) {
+					if (subject.querySelector('#searchText')) {
+						searchText.focus();
+					}
+				}
+			}
+			gURLBar.addEventListener('keyup', gURLBarUpped, false);
+			subject.defaultView.addEventListener('unload', function () {
+				gURLBar.removeEventListener('keyup', gURLBarUpped, false);
+				subject.defaultView.removeEventListener('unload', arguments.callee, false);
+			}, false);
+
+			//Cu.reportError('has autofocus='+searchText.hasAttribute('autofocus'));
+			var iframe = domDoc.createElement('iframe');
+			iframe.setAttribute('type', 'chrome');
+			iframe.setAttribute('style', 'border:0; -moz-box-flex:1;');
+			domDoc.body.insertBefore(iframe, domDoc.querySelector('#topSection').nextSibling);
+			iframe.contentWindow.location = 'about:newtab';
+			iframe.addEventListener('load', function () {
+				iframe.removeEventListener('load', arguments.callee, false);
+				var scrollbox = iframe.contentDocument.querySelector('#newtab-scrollbox')
+				scrollbox.style.backgroundImage = 'none';
+				scrollbox.style.backgroundColor = 'transparent';
+				scrollbox.style.backgroundColor = 'transparent';
 				var newtabLinks = iframe.contentDocument.querySelectorAll('.newtab-link');
-				for (var i=0; i<newtabLinks.length; i++) {
+				for (var i = 0; i < newtabLinks.length; i++) {
 					newtabLinks[i].setAttribute('target', '_parent');
 				}
-				if (!iframe.contentWindow.gAllPages.enabled) {
-					spacers[0].style.display = '';
-					spacers[1].style.display = '';
-					logo.style.display = '';
-					searchContainer.style.margin = '';
-				} else {
-					spacers[0].style.display = 'none';
-					spacers[1].style.display = 'none';
-					logo.style.display = 'none';
-					searchContainer.style.margin = '22px 0px 31px';
-				}
-				browser.contentDocument.querySelector('#newtab-toggle').addEventListener('click', function () {
-					var iframe = browser;
+				var toggleDisplays = function (tdDoc) {
+					iframe = tdDoc.querySelector('iframe');
+					var spacers = tdDoc.querySelectorAll('.spacer');
+					var logo = tdDoc.querySelector('#brandLogo');
+					var searchContainer = tdDoc.querySelector('#searchContainer');
+					var snippetContainer = tdDoc.querySelector('#snippetContainer');
+					var newtabMarginTop = iframe.contentDocument.querySelector('#newtab-margin-top');
 					if (!iframe.contentWindow.gAllPages.enabled) {
 						spacers[0].style.display = '';
 						spacers[1].style.display = '';
 						logo.style.display = '';
 						searchContainer.style.margin = '';
+						snippetContainer.style.display = '';
+						newtabMarginTop.style.display = '';
 					} else {
 						spacers[0].style.display = 'none';
 						spacers[1].style.display = 'none';
 						logo.style.display = 'none';
 						searchContainer.style.margin = '22px 0px 31px';
+						snippetContainer.style.display = 'none';
+						newtabMarginTop.style.display = 'none';
+					}
+				}
+				toggleDisplays(domDoc);
+				
+				var toggleButton = iframe.contentDocument.querySelector('#newtab-toggle');
+				toggleButton.addEventListener('click', function () {
+					toggleDisplays(domDoc);															 
+					let windows = wm.getEnumerator("navigator:browser"); //THIS GETS ALL BROWSER TYPE WINDOWS (MEANING IT HAS GBROWSER)
+					while (windows.hasMoreElements()) {
+						let browserWin = windows.getNext();
+						let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
+						var tabbrowser = browserWin.gBrowser;
+						var numTabs = tabbrowser.browsers.length;
+						for (var index = 0; index < numTabs; index++) {
+							var currentBrowser = tabbrowser.getBrowserAtIndex(index);
+							if (/^about\:home$/im.test(currentBrowser.currentURI.spec) && currentBrowser.contentDocument != domDoc) {
+								toggleDisplays(currentBrowser.contentDocument);
+							}
+						}
+
 					}
 				}, false);
 			}, false);
 		}
-	}
 
-	//} else {
-	//    Cu.reportError('NOTE instanceOf HTMLDocument');
-	//}
-}
-
-function loadIntoWindow(domWindow, browserWin) {
-	if (!browserWin) {
-		Cu.reportError('NO BROWSRWIN');
-		return;
-	}
-	if (!domWindow.gBrowser) {
-		Cu.reportError('NO GBROWSER');
-		return;
-	}
-
-	//DO YOUR STUFF TO THE WINDOW HERE
-	domWindow.gBrowser.addEventListener('DOMContentLoaded', pageLoad, true);
-}
-
-function unloadFromWindow(domWindow, browserWin) {
-	if (!browserWin) {
-		return;
-	}
-	if (!domWindow.gBrowser) {
-		return;
-	}
-
-	//DO YOUR STUFF TO THE WINDOW HERE
-	domWindow.gBrowser.removeEventListener('DOMContentLoaded', pageLoad, true);
-}
-
-var windowListener = {
-	onOpenWindow: function (aWindow) {
-Cu.reportError('WINDOW OPENED');
-		// Wait for the window to finish loading
-		let domWindow = aWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowInternal || Ci.nsIDOMWindow);
-		domWindow.addEventListener("load", function () {
-			Cu.reportError('opened window LOADED');
-			domWindow.removeEventListener("load", arguments.callee, false);
-			loadIntoWindow(domWindow, aWindow);
-		}, false);
 	},
-
-	onCloseWindow: function (aWindow) {},
-
-	onWindowTitleChange: function (aWindow, aTitle) {}
+	register: function () {
+		//os.addObserver(this, "passwordmgr-found-form", false);
+		os.addObserver(this, 'document-element-inserted', false);
+	},
+	unregister: function () {
+		//os.removeObserver(this, "passwordmgr-found-form");
+		os.removeObserver(this, 'document-element-inserted', false);
+	}
 };
 
 function startup(aData, aReason) {
 	if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE) {
-		var prefs = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefBranch);
 		var url = prefs.setCharPref('browser.newtab.url', 'about:home');
 	}
-	// Load into any existing windows
-	// Load into any existing windows
-	let windows = wm.getEnumerator("navigator:browser"); //THIS GETS ALL BROWSER TYPE WINDOWS (MEANING IT HAS GBROWSER)
-	while (windows.hasMoreElements()) {
+
+	if (aReason == ADDON_INSTALL || aReason == ADDON_UPGRADE || aReason == ADDON_ENABLE || aReason == ADDON_DOWNGRADE) {
 		try {
-			let browserWin = windows.getNext();
-			let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
-			loadIntoWindow(domWindow, browserWin);
+			var existCheck_prevent_focus = prefs.getBoolPref('extensions.homepagenewtab.prevent_focus');
 		} catch (ex) {
-			Cu.reportError(ex);
+			prefs.setBoolPref('extensions.homepagenewtab.prevent_focus', true);
 		}
 	}
 
-	// Load into any new windows
-	wm.addListener(windowListener);
+	LMObserver = new myObserver;
+
 }
 
 function shutdown(aData, aReason) {
 	if (aReason == APP_SHUTDOWN) return;
 
-	// Stop listening for new windows
-	wm.removeListener(windowListener);
-
-	// Unload from any existing windows
-	let windows = wm.getEnumerator("navigator:browser");
-	while (windows.hasMoreElements()) {
-		let browserWin = windows.getNext();
-		let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
-		unloadFromWindow(domWindow, browserWin);
-	}
+	LMObserver.unregister();
 
 	if (aReason == ADDON_UNINSTALL || aReason == ADDON_DISABLE) {
-		var prefs = Cc['@mozilla.org/preferences-service;1'].getService(Ci.nsIPrefBranch);
 		var url = prefs.clearUserPref('browser.newtab.url');
 	}
 
