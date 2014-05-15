@@ -1,29 +1,63 @@
 @-moz-document url(about:home) {
-input[type="button"] {
-    cursor: pointer;
-}
-#newtab-toggle {
-    -moz-user-focus: normal;
-    position: absolute;
-    right: 12px;
-    top: 12px;
-    cursor: pointer;
-    -moz-user-focus: normal;
-    color: -moz-dialogtext;
-    font: message-box;
-    font-size: 75%;
-    width: 16px;
-    height: 16px;
-    background: -216px 0 transparent url(chrome://browser/skin/newtab/controls.png);
-    border: none;
-    padding: 0;
-}
-body[page-disabled] #newtab-toggle {
-    background-position: -232px 0 !important;
+	input[type="button"] {
+		cursor: pointer;
+	}
+	#newtab-toggle {
+		-moz-user-focus: normal;
+		position: absolute;
+		right: 12px;
+		top: 12px;
+		cursor: pointer;
+		-moz-user-focus: normal;
+		color: -moz-dialogtext;
+		font: message-box;
+		font-size: 75%;
+		width: 16px;
+		height: 16px;
+		background: -216px 0 transparent url(chrome://browser/skin/newtab/controls.png);
+		border: none;
+		padding: 0;
+	}
+	body[page-disabled] #newtab-toggle {
+		background-position: -232px 0 !important;
+	}
+
+	body #aboutMozilla:before {
+		right: auto !important;
+		left: 12px;
+	}
 }
 
-body #aboutMozilla:before {
-	right: auto !important;
-	left: 12px;
-}
+@-moz-document url(about:newtab) {
+	#newtab-undo-container {
+		position: relative;
+		z-index: 1;
+		background-color: rgba(220, 220, 220, 0.95) !important;
+		/*box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2) inset, 0px -1px 0px rgba(255, 255, 255, 0.5);*/
+		border-radius: 5px;
+		border: 1px dashed silver !important;
+		flex-direction: row;
+		display: flex !important;
+		align-items: center;
+	}
+/*
+	#newtab-undo-container {
+		top: 50%;
+		z-index: 100;
+		background-color: rgba(220, 220, 220, 0.95) !important;
+		border-radius: 5px;
+		position: absolute;
+		left: 50%;
+		margin-left: -15%;
+	}
+	#newtab-undo-container > label{
+		vertical-align: middle;
+	}
+	#newtab-undo-container > button {
+		vertical-align: middle;
+	}
+	#newtab-undo-container > toolbarbutton {
+		vertical-align: middle;
+	}
+*/
 }

@@ -86,6 +86,8 @@ myObserver.prototype = {
 					var newToggleButton = tdDoc.querySelector('#newtab-toggle');
 					var logo = tdDoc.querySelector('#brandLogo');
 					var searchContainer = tdDoc.querySelector('#searchContainer');
+					var searchText = tdDoc.querySelector('#searchText');
+					var searchSubmit = tdDoc.querySelector('#searchSubmit');
 					var snippetContainer = tdDoc.querySelector('#snippetContainer');
 					var aboutMozilla = tdDoc.querySelector('#aboutMozilla');
 					var newtabMarginTop = iframe.contentDocument.querySelector('#newtab-margin-top');
@@ -97,9 +99,11 @@ myObserver.prototype = {
 						logo.style.display = '';
 						searchContainer.style.margin = '';
 						snippetContainer.style.display = '';
-						newtabMarginTop.style.display = '';
+						newtabMarginTop.setAttribute('style','');						
 						iframe.style.mozBoxFlex = 0;
 						iframe.style.height = '50px';
+						searchText.style.display = '';
+						searchSubmit.style.display = '';
 					} else {
 						tdDoc.body.removeAttribute('page-disabled');
 						//tdDoc.body.setAttribute('page-disabled', 'true');
@@ -108,11 +112,15 @@ myObserver.prototype = {
 						logo.style.display = 'none';
 						searchContainer.style.margin = '22px 0px 31px';
 						snippetContainer.style.display = 'none';
-						newtabMarginTop.style.display = 'none';
+						newtabMarginTop.setAttribute('style','position: absolute; width: 100%; display: flex; justify-content: center; align-items: center; height: 100%; max-height:none;');
 						iframe.style.mozBoxFlex = 1;
 						iframe.style.height = 'auto';
 						aboutMozilla.style.right = 'auto';
 						aboutMozilla.style.left = '12px';
+						if (prefs.getBoolPref('extensions.homepagenewtab.hide_search_field')) {
+							searchText.style.display = 'none';
+							searchSubmit.style.display = 'none';
+						}
 					}
 				}
 				toggleDisplays(domDoc);
@@ -150,7 +158,7 @@ myObserver.prototype = {
 };
 
 function startup(aData, aReason) {
-	if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE) {
+	if (aReason == ADDON_INSTALL || aReason == ADDON_ENABLE || aReason == ADDON_DOWNGRADE || aReason == ADDON_UPGRADE) {
 		var url = prefs.setCharPref('browser.newtab.url', 'about:home');
 	}
 
@@ -159,6 +167,12 @@ function startup(aData, aReason) {
 			var existCheck_prevent_focus = prefs.getBoolPref('extensions.homepagenewtab.prevent_focus');
 		} catch (ex) {
 			prefs.setBoolPref('extensions.homepagenewtab.prevent_focus', true);
+		}
+		
+		try {
+			var existCheck_prevent_focus = prefs.getBoolPref('extensions.homepagenewtab.hide_search_field');
+		} catch (ex) {
+			prefs.setBoolPref('extensions.homepagenewtab.hide_search_field', false);
 		}
 	}
 

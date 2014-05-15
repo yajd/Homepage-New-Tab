@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
   <setting pref="extensions.homepagenewtab.prevent_focus" type="bool" title="Prevent Search Box Focus">The default behavior of the homepage on page load is to focus the search box. Enabling this feature prevents this behavior and maintains the focus in the URL bar.</setting>
-  <setting pref="browser.newtabpage.rows" type="integer" title="Rows" max="10" min="1"/>
-  <setting pref="browser.newtabpage.columns" type="integer" title="Columns" max="10" min="1"/>
+  <setting pref="extensions.homepagenewtab.hide_search_field" type="bool" title="Hide Search Field">The search box on the homepage is not shown.</setting>
+  <setting pref="browser.newtabpage.rows" type="integer" title="Thumbnail Rows" max="10" min="1"/>
+  <setting pref="browser.newtabpage.columns" type="integer" title="Thumbnail Columns" max="10" min="1"/>
 </vbox>
