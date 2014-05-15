@@ -60,8 +60,14 @@ myObserver.prototype = {
 				scrollbox.style.backgroundColor = 'transparent';
 				scrollbox.style.backgroundColor = 'transparent';
 				var newtabLinks = iframe.contentDocument.querySelectorAll('.newtab-link');
-				for (var i = 0; i < newtabLinks.length; i++) {
-					newtabLinks[i].setAttribute('target', '_parent');
+				if (newtabLinks.length > 0) {
+					for (var i = 0; i < newtabLinks.length; i++) {
+						newtabLinks[i].setAttribute('target', '_parent');
+					}
+				} else {
+					var xpc = iframe.contentWindow.wrappedJSObject;
+					var _createSiteFragment = xpc.uneval(xpc.gGrid._createSiteFragment);
+					xpc.eval('gGrid._createSiteFragment = ' + _createSiteFragment.replace('<a class="newtab-link">', '<a class="newtab-link" target="_parent">'));
 				}
 				var toggleDisplays = function (tdDoc) {
 					iframe = tdDoc.querySelector('iframe');
@@ -77,6 +83,8 @@ myObserver.prototype = {
 						searchContainer.style.margin = '';
 						snippetContainer.style.display = '';
 						newtabMarginTop.style.display = '';
+						iframe.style.mozBoxFlex = 0;
+						iframe.style.height = '50px';
 					} else {
 						spacers[0].style.display = 'none';
 						spacers[1].style.display = 'none';
@@ -84,6 +92,8 @@ myObserver.prototype = {
 						searchContainer.style.margin = '22px 0px 31px';
 						snippetContainer.style.display = 'none';
 						newtabMarginTop.style.display = 'none';
+						iframe.style.mozBoxFlex = 1;
+						iframe.style.height = 'auto';
 					}
 				}
 				toggleDisplays(domDoc);
