@@ -28,6 +28,10 @@ function pageLoad(e) {
 				browser.contentDocument.querySelector('#newtab-scrollbox').style.backgroundColor = 'transparent';
 				browser.contentDocument.querySelector('#newtab-scrollbox').style.backgroundColor = 'transparent';
 				var iframe = browser;
+				var newtabLinks = iframe.contentDocument.querySelectorAll('.newtab-link');
+				for (var i=0; i<newtabLinks.length; i++) {
+					newtabLinks[i].setAttribute('target', '_parent');
+				}
 				if (!iframe.contentWindow.gAllPages.enabled) {
 					spacers[0].style.display = '';
 					spacers[1].style.display = '';
