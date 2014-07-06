@@ -39,7 +39,7 @@ myObserver.prototype = {
 
 			var gURLBar = Services.wm.getMostRecentWindow("navigator:browser").gBrowser.getBrowserForDocument(subject).ownerDocument.defaultView.gURLBar;
 			var gURLBarUpped = function () {
-				Cu.reportError('HomepageNewTab - gURLBarUpped');
+				console.info('HomepageNewTab - gURLBarUpped', 'Services.focus.focusedElement=', Services.focus.focusedElement);
 				if (Services.focus.focusedElement == subject.querySelector('html')) {
 					if (subject.querySelector('#searchText')) {
 						searchText.focus();
@@ -55,6 +55,7 @@ myObserver.prototype = {
 			//Cu.reportError('has autofocus='+searchText.hasAttribute('autofocus'));
 			var iframe = domDoc.createElement('iframe');
 			iframe.setAttribute('type', 'chrome');
+			iframe.setAttribute('id', 'homepage-new-tab-iframe');
 			iframe.setAttribute('style', 'border:0; -moz-box-flex:1;');
 			domDoc.body.insertBefore(iframe, domDoc.querySelector('#topSection').nextSibling);
 			var newToggleButton = domDoc.createElement('input');
@@ -62,47 +63,37 @@ myObserver.prototype = {
 			newToggleButton.setAttribute('type', 'button');
 			newToggleButton.setAttribute('style', '-moz-user-focus: normal; position: absolute; right: 12px; top: 12px; cursor: pointer; color: -moz-dialogtext; font: message-box; font-size: 75%; width: 16px; height: 16px; background: -216px 0 transparent url(chrome://browser/skin/newtab/controls.png); border: none; padding: 0;');
 			domDoc.body.appendChild(newToggleButton);
-			newToggleButton.addEventListener('click', function(e){e.target.ownerDocument.querySelector('iframe').contentDocument.querySelector('#newtab-toggle').click()}, false);
+			newToggleButton.addEventListener('click', function(e) {
+				e.target.ownerDocument.querySelector('#homepage-new-tab-iframe').contentDocument.querySelector('#newtab-toggle').click();
+			}, false);
 
 			iframe.contentWindow.location = 'about:newtab';
-			iframe.addEventListener('load', function () {
-				iframe.removeEventListener('load', arguments.callee, false);
-				var scrollbox = iframe.contentDocument.querySelector('#newtab-scrollbox')
-				iframe.contentDocument.querySelector('#newtab-toggle').style.display = 'none';
-				scrollbox.style.backgroundImage = 'none';
-				scrollbox.style.backgroundColor = 'transparent';
-				scrollbox.style.backgroundColor = 'transparent';
-				var newtabLinks = iframe.contentDocument.querySelectorAll('.newtab-link');
-				if (newtabLinks.length > 0) {
-					for (var i = 0; i < newtabLinks.length; i++) {
-						newtabLinks[i].setAttribute('target', '_parent');
-					}
-				} else {
-					var xpc = iframe.contentWindow.wrappedJSObject;
-					var _createSiteFragment = xpc.uneval(xpc.gGrid._createSiteFragment);
-					xpc.eval('gGrid._createSiteFragment = ' + _createSiteFragment.replace('<a class="newtab-link">', '<a class="newtab-link" target="_parent">')); //this here was responsible for opening pages in new tab. we want to find alternative method as when user unpins or gets new thumnails in, if he clicks it, it opens the link within the frame
-				}
-
-				toggleDisplay(domDoc);
-				
+			iframe.addEventListener('load', function() {
+			
+				reflectToggle(domDoc);
 				var toggleButton = iframe.contentDocument.querySelector('#newtab-toggle');
-				toggleButton.addEventListener('click', function () {
-					toggleDisplay(domDoc);															 
-					let windows = Services.wm.getEnumerator("navigator:browser"); //THIS GETS ALL BROWSER TYPE WINDOWS (MEANING IT HAS GBROWSER)
-					while (windows.hasMoreElements()) {
-						let browserWin = windows.getNext();
-						let domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow);
-						var tabbrowser = browserWin.gBrowser;
-						var numTabs = tabbrowser.browsers.length;
-						for (var index = 0; index < numTabs; index++) {
-							var currentBrowser = tabbrowser.getBrowserAtIndex(index);
-							if (/^about\:home$/im.test(currentBrowser.currentURI.spec) && currentBrowser.contentDocument != domDoc) {
-								toggleDisplay(currentBrowser.contentDocument);
+				toggleButton.addEventListener('click', function() {
+					domDoc.defaultView.setTimeout(function() { //have to set timeout because when the toggle button is clicked i think its firing after this function, so this function will think its the old value, and because im letting that toggle button handling the showing of the thumbnails it will show it or hide it to whatever is the new
+						reflectToggle(domDoc);
+						var windows = Services.wm.getEnumerator('navigator:browser'); //THIS GETS ALL BROWSER TYPE WINDOWS (MEANING IT HAS GBROWSER)
+						while (windows.hasMoreElements()) {
+							var browserWin = windows.getNext();
+							var domWindow = browserWin.QueryInterface(Ci.nsIDOMWindow); // i dont think i need this as getEnumerator gets `nsIDOMWindow`s
+							var tabbrowser = browserWin.gBrowser;
+							var numTabs = tabbrowser.browsers.length;
+							for (var index = 0; index < numTabs; index++) {
+								var currentBrowser = tabbrowser.getBrowserAtIndex(index);
+								if (/^about\:home$/im.test(currentBrowser.currentURI.spec) && currentBrowser.contentDocument != domDoc) {
+									var inHereIframe = currentBrowser.contentDocument.querySelector('#homepage-new-tab-iframe');
+									if (inHereIframe) {
+										reflectToggle(currentBrowser.contentDocument);
+									}
+								}
 							}
 						}
-
-					}
+					}, 20);
 				}, false);
+				
 			}, false);
 		}
 
@@ -117,7 +108,7 @@ myObserver.prototype = {
 	}
 };
 
-function toggleDisplay(tdDoc) {
+function reflectToggle(tdDoc) {
 	console.info('useNewMethod~', useNewMethod);
 	if (useNewMethod === undefined) {
 		var platformVersion = Services.appinfo.platformVersion;
@@ -133,7 +124,7 @@ function toggleDisplay(tdDoc) {
 	}
 	
 	console.log('useNewMethod=', useNewMethod);
-	var iframe = tdDoc.querySelector('iframe');
+	var iframe = tdDoc.querySelector('#homepage-new-tab-iframe');
 	if (!iframe) {
 		console.warn('no iframe in this new tab tab');
 		return;
@@ -192,67 +183,172 @@ function toggleDisplay(tdDoc) {
 		//use new method
 		var gAllPagesEnabled = iframe.contentWindow.gAllPages.enabled;
 		var parent = iframe.ownerDocument;
+		var iframeDoc = iframe.contentDocument;
+		
 		if (gAllPagesEnabled) {
 			//show the thumnbails
-			var changesParent = {
+			console.info('gAllPagesEnabled=', gAllPagesEnabled, 'showing thumbnails');
+			var changes = {
+				body: {
+					targetDocument: parent,
+					'page-disabled': null
+				},
+				'#brandLogo': {
+					targetDocument: parent,
+					style: 'display:none'
+				},
 				'#topSection': {
+					targetDocument: parent,
+					style: 'margin-top:10px;'
+				},
+				'#snippetContainer': {
+					targetDocument: parent,
+					style: 'display:none'
+				},
+				'#newtab-search-container': {
+					targetDocument: iframeDoc,
+					style: 'display:none;'
+				},
+				'#newtab-margin-undo-container': {
+					targetDocument: iframeDoc,
+					'style': 'position: absolute; width: 100%; display: flex; justify-content: center; align-items: center; max-height:none; margin-top: -30px;'
+				},/*
+				'#newtab-margin-top': {
+					targetDocument: iframeDoc,
+					'style': 'display:none'
+				},
+				'#newtab-margin-bottom': {
+					targetDocument: iframeDoc,
+					'style': 'display:none'
+				},*/
+				'#newtab-search-container': {
+					targetDocument: iframeDoc,
+					style: 'display:none;'
+				},
+				'#newtab-toggle': {
+					targetDocument: iframeDoc,
+					style: 'display:none'
+				},
+				'#homepage-new-tab-iframe': {
+					targetDocument: parent,
+					'style': 'border:0; -moz-box-flex:1;' // because i set when i create the iframe: 'border:0; -moz-box-flex:1;' i have to include these but the change here is the display
+				},
+				'.spacer': {
+					targetDocument: parent,
+					style: 'display:none'
+				},
+				'#homepage-new-tab-iframe ~ .spacer': {
+					targetDocument: parent,
+					style: 'display:none'
+				}
+			}
+			if (Services.prefs.getBoolPref('extensions.homepagenewtab.hide_search_field')) {
+				changes['#searchContainer'] = {
+					targetDocument: parent,
+					style: 'display:none;'
+				}
+			} else {
+				changes['#searchContainer'] = {
+					targetDocument: parent,
 					style: null
 				}
 			}
-			var changesIframe = {
-				'#newtab-search-container': {
-					'page-disabled': null
+			for (var qSelector in changes) {
+				console.log('targetDocument', changes[qSelector].targetDocument == parent ? 'parent' : 'iframeDoc');
+				console.log('querySelectoring', qSelector);
+				var el = changes[qSelector].targetDocument.querySelector(qSelector);
+				
+				if (!el) {
+					console.warn('el after querySelector was undefined', el);
+					continue;
 				}
-			}
-			for (var n in changesParent) {
-				for (var n2 in changesParent[n]) {
-					console.log('querySelectoring', n);
-					if (changesParent[n][n2] === null) {
-						parent.querySelector(n).removeAttribute(n2);
+				for (var prop in changes[qSelector]) {
+					if (prop == 'targetDocument') { continue; }
+					console.log('on property', prop, 'set to = ', changes[qSelector][prop]);
+					if (changes[qSelector][prop] === null) {
+						el.removeAttribute(prop);
 					} else {
-						parent.querySelector(n).setAttribute(n2, changesParent[n][n2]);
-					}
-				}
-			}
-			for (var n in changesIframe) {
-				for (var n2 in changesIframe[n]) {
-					console.log('querySelectoring', n);
-					if (changesIframe[n][n2] === null) {
-						iframe.contentDocument.querySelector(n).removeAttribute(n2);
-					} else {
-						iframe.contentDocument.querySelector(n).setAttribute(n2, changesIframe[n][n2]);
+						el.setAttribute(prop, changes[qSelector][prop]);
 					}
 				}
 			}
 		} else {
 			//dont show the thumbnails
-			var changesParent = {
-				'#topSection': {
-					style: 'display:none'
-				}
-			};
-			var changesIframe = {
-				'#newtab-search-container': {
+			console.info('gAllPagesEnabled=', gAllPagesEnabled, 'hiding thumbnails');
+			var changes = {
+				body: {
+					targetDocument: parent,
 					'page-disabled': 'true'
-				}
-			};
-			for (var n in changesParent) {
-				for (var n2 in changesParent[n]) {
-					console.log('querySelectoring', n);
-					if (changesParent[n][n2] === null) {
-						parent.querySelector(n).removeAttribute(n2);
-					} else {
-						parent.querySelector(n).setAttribute(n2, changesParent[n][n2]);
-					}
+				},
+				'#brandLogo': {
+					targetDocument: parent,
+					style: null
+				},
+				'#topSection': {
+					targetDocument: parent,
+					style: null
+				},
+				'#snippetContainer': {
+					targetDocument: parent,
+					style: null
+				},/*
+				'#newtab-margin-top': {
+					targetDocument: iframeDoc,
+					'style': null
+				},
+				'#newtab-margin-bottom': {
+					targetDocument: iframeDoc,
+					'style': null
+				},*/
+				'#newtab-search-container': {
+					targetDocument: iframeDoc,
+					style: null
+				},
+				'#newtab-margin-undo-container': {
+					targetDocument: iframeDoc,
+					'style': null
+				},
+				'#newtab-search-container': {
+					targetDocument: iframeDoc,
+					style: null
+				},
+				'#newtab-toggle': {
+					targetDocument: iframeDoc,
+					style: null
+				},
+				'#searchContainer': {
+					targetDocument: parent,
+					style: null
+				},
+				'#homepage-new-tab-iframe': {
+					targetDocument: parent,
+					'style': 'display:none; border:0; -moz-box-flex:1;' // because i set when i create the iframe: 'border:0; -moz-box-flex:1;' i have to include these but the change here is the display
+				},
+				'.spacer': {
+					targetDocument: parent,
+					style: null
+				},
+				'#homepage-new-tab-iframe ~ .spacer': {
+					targetDocument: parent,
+					style: null
 				}
 			}
-			for (var n in changesIframe) {
-				for (var n2 in changesIframe[n]) {
-					console.log('querySelectoring', n);
-					if (changesIframe[n][n2] === null) {
-						iframe.contentDocument.querySelector(n).removeAttribute(n2);
+			for (var qSelector in changes) {
+				console.log('targetDocument', changes[qSelector].targetDocument == parent ? 'parent' : 'iframeDoc');
+				console.log('querySelectoring', qSelector);
+				var el = changes[qSelector].targetDocument.querySelector(qSelector);
+				
+				if (!el) {
+					console.warn('el after querySelector was undefined', el);
+					continue;
+				}
+				for (var prop in changes[qSelector]) {
+					if (prop == 'targetDocument') { continue; }
+					console.log('on property', prop, 'set to = ', changes[qSelector][prop]);
+					if (changes[qSelector][prop] === null) {
+						el.removeAttribute(prop);
 					} else {
-						iframe.contentDocument.querySelector(n).setAttribute(n2, changesIframe[n][n2]);
+						el.setAttribute(prop, changes[qSelector][prop]);
 					}
 				}
 			}
