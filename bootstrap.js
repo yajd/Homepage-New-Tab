@@ -38,17 +38,36 @@ myObserver.prototype = {
 			}
 
 			var gURLBar = Services.wm.getMostRecentWindow("navigator:browser").gBrowser.getBrowserForDocument(subject).ownerDocument.defaultView.gURLBar;
-			var gURLBarUpped = function () {
+			var gURLBarUpped = function (e) {
+				console.info('e', e);
 				console.info('HomepageNewTab - gURLBarUpped', 'Services.focus.focusedElement=', Services.focus.focusedElement);
-				if (Services.focus.focusedElement == subject.querySelector('html')) {
-					if (subject.querySelector('#searchText')) {
-						searchText.focus();
-					}
+				if (e.keyCode == 9) {
+				//if (Services.focus.focusedElement == subject.querySelector('html')) {
+					console.log('looking to focus', subject.querySelector('#searchText'));
+					gURLBar.ownerDocument.defaultView.addEventListener('keyup', function() {
+						var AutoCompleteHidden = !PopupAutoComplete.hasAttribute('width');
+						console.log('doing');
+						console.log('popup hidden = ', AutoCompleteHidden);
+						if (AutoCompleteHidden) {
+							gURLBar.ownerDocument.defaultView.removeEventListener('keyup', arguments.callee, false);
+							if (subject.querySelector('#searchText')) {
+								if (searchText.parentNode.parentNode.style.display != 'none') {
+									searchText.focus();
+									console.log('FOCD');
+								} else {
+									console.log('its hidden');
+								}
+							}
+						} else {
+							console.log('autocomplete is vis so dont do');
+						}
+					}, false);
 				}
 			}
-			gURLBar.addEventListener('keyup', gURLBarUpped, false);
+			var PopupAutoComplete = gURLBar.ownerDocument.querySelector('#PopupAutoCompleteRichResult');
+			gURLBar.addEventListener('keydown', gURLBarUpped, false);
 			subject.defaultView.addEventListener('unload', function () {
-				gURLBar.removeEventListener('keyup', gURLBarUpped, false);
+				gURLBar.removeEventListener('keydown', gURLBarUpped, false);
 				subject.defaultView.removeEventListener('unload', arguments.callee, false);
 			}, false);
 
