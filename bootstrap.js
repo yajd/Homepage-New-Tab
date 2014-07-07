@@ -157,6 +157,7 @@ function reflectToggle(tdDoc) {
 					var snippetContainer = tdDoc.querySelector('#snippetContainer');
 					var aboutMozilla = tdDoc.querySelector('#aboutMozilla');
 					var newtabMarginTop = iframe.contentDocument.querySelector('#newtab-margin-top');
+					var newtabTogI = iframe.contentDocument.querySelector('#newtab-toggle');
 					if (!iframe.contentWindow.gAllPages.enabled) {
 						//tdDoc.body.removeAttribute('page-disabled');
 						tdDoc.body.setAttribute('page-disabled', 'true');
@@ -179,10 +180,11 @@ function reflectToggle(tdDoc) {
 					} else {
 						tdDoc.body.removeAttribute('page-disabled');
 						//tdDoc.body.setAttribute('page-disabled', 'true');
+						newtabTogI.style.display = 'none';
 						spacers[0].style.display = 'none';
 						spacers[1].style.display = 'none';
 						logo.style.display = 'none';
-						searchContainer.style.margin = '66px 0px 31px';
+						searchContainer.style.margin = '31px 0px 31px';
 						snippetContainer.style.display = 'none';
 						newtabMarginTop.setAttribute('style','position: absolute; width: 100%; display: flex; justify-content: center; align-items: center; height: 100%; max-height:none;');
 						iframe.style.mozBoxFlex = 1;
