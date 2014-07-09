@@ -86,9 +86,41 @@ myObserver.prototype = {
 				e.target.ownerDocument.querySelector('#homepage-new-tab-iframe').contentDocument.querySelector('#newtab-toggle').click();
 			}, false);
 
+
 			iframe.contentWindow.location = 'about:newtab';
 			iframe.addEventListener('load', function() {
-			
+			/*
+				iframe.contentDocument.documentElement.addEventListener('mousedown', function(e) {
+					if (e.target.parentNode.href) {
+						e.target.parentNode.setAttribute('target', '_parent');
+					}
+				}, false);
+				iframe.contentDocument.documentElement.addEventListener('keydown', function(e) {
+					console.info('e.target = ', e.target, e);
+					if (e.target.parentNode.href) {
+						e.target.parentNode.setAttribute('target', '_parent');
+					}
+				}, false);
+	console.log('ADDED MOUSEDONWN')
+	*/
+	//setThumbnailsTarget(iframe.contentDocument);
+	var grid = iframe.contentDocument.getElementById('newtab-grid');
+	var mobs = new iframe.contentWindow.MutationObserver(function(mutations) {
+  mutations.forEach(function(mutation) {
+    console.log(mutation.type, mutation);
+  if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+  	var link = mutation.target.querySelector('.newtab-link');
+  	if (link) {
+  		link.setAttribute('target', '_parent');
+  		console.log('set target on this el')
+  	} else {
+  		console.log('this ell has no link BUT it was an added el')
+  	}
+  	
+  }
+  });
+});
+	mobs.observe(grid,{childList:!0,subtree:!0});		
 				reflectToggle(domDoc);
 				var toggleButton = iframe.contentDocument.querySelector('#newtab-toggle');
 				toggleButton.addEventListener('click', function() {
@@ -126,6 +158,15 @@ myObserver.prototype = {
 		Services.obs.removeObserver(this, 'document-element-inserted', false);
 	}
 };
+
+function setThumbnailsTarget(newtabDoc) {
+	var newtabLinks = newtabDoc.querySelectorAll('.newtab-link');
+	if (newtabLinks.length > 0) {
+		for (var i = 0; i < newtabLinks.length; i++) {
+			newtabLinks[i].setAttribute('target', '_parent');
+		}
+	}
+}
 
 function reflectToggle(tdDoc) {
 	console.info('useNewMethod~', useNewMethod);
